@@ -486,7 +486,7 @@ class MarkdownConverter:
 # Default to remote Ollama server for better performance
 ollama_url = os.getenv('OLLAMA_URL', 'http://sonne.lan:8000')
 ollama_model = os.getenv('OLLAMA_MODEL', 'gemma3:27b')
-ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'qwen2.5vl:32b')
+ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'gemma3:27b')
 
 converter = MarkdownConverter(
     ollama_url=ollama_url,
