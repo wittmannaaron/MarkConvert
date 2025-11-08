@@ -4,7 +4,9 @@ Online Tool zum Konvertieren von Dokumentformaten in Markdown und umgekehrt.
 
 ## 🚀 Sofort loslegen
 
-**Keine Installation erforderlich!** Starten Sie MarkConvert mit einem einzigen Befehl:
+**⚠️ Hinweis**: `uvx markconvert` funktioniert nur nach der Veröffentlichung auf PyPI. Für die lokale Entwicklung siehe [Entwicklung](#-entwicklung).
+
+**Keine Installation erforderlich!** Starten Sie MarkConvert mit einem einzigen Befehl (nach PyPI-Veröffentlichung):
 
 ```bash
 uvx markconvert
@@ -237,11 +239,31 @@ Zusätzliche Anforderungen bei Verwendung von `MARKCONVERT_USE_VLM=true`:
 
 ### Lokale Installation für Entwickler
 
+**Wichtig**: Wenn du lokal am Code arbeitest, funktioniert `uvx markconvert` NICHT, da das Paket noch nicht auf PyPI veröffentlicht ist. Nutze stattdessen diese Methode:
+
 ```bash
-# Repository klonen
+# Repository klonen (falls noch nicht geschehen)
 git clone https://github.com/wittmannaaron/MarkConvert.git
 cd MarkConvert
 
+# Virtual Environment erstellen und aktivieren
+python -m venv .venv
+source .venv/bin/activate  # macOS/Linux
+# oder: .venv\Scripts\activate  # Windows
+
+# Lokale Installation (editable mode)
+pip install -e .
+
+# Starten (Standard-Pipeline)
+python -m markconvert
+
+# Starten (mit VLM-Pipeline)
+MARKCONVERT_USE_VLM=true python -m markconvert
+```
+
+**Alternative mit uv:**
+
+```bash
 # Mit uv installieren
 uv pip install -e .
 
