@@ -17,6 +17,33 @@ Das war's! Der Editor öffnet sich automatisch in Ihrem Browser und läuft lokal
 - Python 3.10 oder höher
 - [uv](https://docs.astral.sh/uv/) installiert (oder nutzen Sie `uvx` direkt - es lädt alles automatisch)
 
+### System-Abhängigkeiten installieren
+
+**Für PDF-Export (WeasyPrint) benötigt:**
+
+**macOS:**
+```bash
+# Pango und Cairo via Homebrew installieren
+brew install pango
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+# WeasyPrint System-Bibliotheken installieren
+sudo apt-get install python3-dev libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+```
+
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf install pango gdk-pixbuf2 libffi-devel
+```
+
+**Windows:**
+```bash
+# GTK3 Runtime installieren von:
+# https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+```
+
 ### Installation von uv (falls noch nicht vorhanden)
 
 ```bash
@@ -159,8 +186,8 @@ MarkConvert/
 
 ```bash
 # Repository klonen
-git clone https://github.com/wittmannaaron/MarkConvert-.git
-cd MarkConvert-
+git clone https://github.com/wittmannaaron/MarkConvert.git
+cd MarkConvert
 
 # Mit uv installieren
 uv pip install -e .
@@ -184,6 +211,24 @@ Installieren Sie uv:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+### WeasyPrint Import-Fehler / "cannot load library 'libgobject-2.0-0'"
+**Problem**: Die Anwendung startet nicht und zeigt einen Fehler mit WeasyPrint oder libgobject.
+
+**Lösung**: System-Bibliotheken für PDF-Export installieren:
+
+**macOS:**
+```bash
+brew install pango
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0
+```
+
+**Windows:**
+- GTK3 Runtime installieren von: https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+
 ### "Port 5000 already in use"
 Ein anderer Prozess nutzt bereits Port 5000. Beenden Sie diesen oder ändern Sie den Port in `src/markconvert/__main__.py`.
 
@@ -193,7 +238,7 @@ Stellen Sie sicher, dass die PDF-Datei nicht verschlüsselt oder beschädigt ist
 ## 📞 Support & Feedback
 
 Für Fehlerberichte oder Feature-Anfragen öffnen Sie bitte ein Issue im Repository:
-https://github.com/wittmannaaron/MarkConvert-/issues
+https://github.com/wittmannaaron/MarkConvert/issues
 
 ## 📄 Lizenz
 

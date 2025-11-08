@@ -20,6 +20,24 @@ macOS/Linux:
      curl -LsSf https://astral.sh/uv/install.sh | sh
 
 
+SCHRITT 1a: System-Bibliotheken installieren (einmalig)
+--------------------------------------------------------
+
+Für PDF-Export benötigt MarkConvert zusätzliche System-Bibliotheken:
+
+macOS:
+  1. Öffnen Sie das Terminal
+  2. Führen Sie aus:
+     brew install pango
+
+Linux (Ubuntu/Debian):
+  sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0
+
+Windows:
+  GTK3 Runtime installieren von:
+  https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+
+
 SCHRITT 2: MarkConvert starten
 -------------------------------
 
@@ -121,6 +139,12 @@ Emojis funktionieren in allen Formaten!
 "uvx: command not found"
 → uv ist nicht installiert. Folgen Sie SCHRITT 1 oben.
 
+Fehler beim Start: "cannot load library 'libgobject-2.0-0'" oder WeasyPrint-Fehler
+→ System-Bibliotheken fehlen. Folgen Sie SCHRITT 1a oben.
+→ macOS: brew install pango
+→ Linux: sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0
+→ Windows: GTK3 Runtime installieren
+
 "Port 5000 already in use"
 → Schließen Sie andere Programme, die Port 5000 nutzen
 → Oder beenden Sie eine alte MarkConvert-Instanz (Strg+C im Terminal)
@@ -147,6 +171,6 @@ MarkConvert aktualisiert sich automatisch beim Start mit uvx!
 
 Viel Erfolg mit MarkConvert!
 
-Für weitere Hilfe: https://github.com/wittmannaaron/MarkConvert-
+Für weitere Hilfe: https://github.com/wittmannaaron/MarkConvert
 
 ═══════════════════════════════════════════════════════════════

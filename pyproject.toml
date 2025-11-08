@@ -23,7 +23,7 @@ dependencies = [
 markconvert = "markconvert.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/wittmannaaron/MarkConvert-"
+Homepage = "https://github.com/wittmannaaron/MarkConvert"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/markconvert"]
