@@ -93,7 +93,11 @@ Antworte mit NUR EINEM WORT: entweder "document" oder "photo"."""
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": prompt},
-                    {"type": "input_image", "image_data": {"b64": b64, "mime_type": mime_type}}
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:{mime_type};base64,{b64}",
+                        "detail": "high"
+                    }
                 ]
             }]
         )
@@ -140,7 +144,11 @@ WICHTIG: Gib NUR das Markdown aus, keine zusätzlichen Erklärungen oder Komment
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": prompt},
-                    {"type": "input_image", "image_data": {"b64": b64, "mime_type": mime_type}}
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:{mime_type};base64,{b64}",
+                        "detail": "high"
+                    }
                 ]
             }]
         )
@@ -176,7 +184,11 @@ Gib eine klare, strukturierte Beschreibung in Markdown-Format."""
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": prompt},
-                    {"type": "input_image", "image_data": {"b64": b64, "mime_type": mime_type}}
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:{mime_type};base64,{b64}",
+                        "detail": "high"
+                    }
                 ]
             }]
         )
@@ -220,7 +232,11 @@ WICHTIG: Gib NUR das Markdown aus, keine zusätzlichen Erklärungen oder Komment
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": prompt},
-                    {"type": "input_file", "file_data": {"b64": b64, "mime_type": "application/pdf"}}
+                    {
+                        "type": "input_file",
+                        "file_data": f"data:application/pdf;base64,{b64}",
+                        "filename": pdf_path.name
+                    }
                 ]
             }]
         )
