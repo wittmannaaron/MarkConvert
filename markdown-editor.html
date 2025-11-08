@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkConvert - Online Markdown Editor</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .toolbar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .editor-pane, .preview-pane {
+            padding: 30px;
+        }
+
+        .editor-pane {
+            border-right: 2px solid #e0e0e0;
+        }
+
+        .pane-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: calc(100% - 50px);
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            border-color: #667eea;
+        }
+
+        #preview {
+            width: 100%;
+            height: calc(100% - 50px);
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            line-height: 1.7;
+        }
+
+        #preview h1 {
+            color: #2d3748;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-size: 2em;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        #preview h2 {
+            color: #2d3748;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            font-size: 1.5em;
+        }
+
+        #preview h3 {
+            color: #2d3748;
+            margin-top: 16px;
+            margin-bottom: 10px;
+            font-size: 1.25em;
+        }
+
+        #preview p {
+            margin-bottom: 12px;
+            color: #4a5568;
+        }
+
+        #preview code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: #e53e3e;
+        }
+
+        #preview pre {
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        #preview pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        #preview blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #4a5568;
+            font-style: italic;
+        }
+
+        #preview ul, #preview ol {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        #preview li {
+            margin-bottom: 6px;
+        }
+
+        #preview a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        #preview a:hover {
+            text-decoration: underline;
+        }
+
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        #preview th, #preview td {
+            border: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        #preview th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        #preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        .upload-area {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: #e8eaf6;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8eaf6;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .status-message {
+            margin: 10px 30px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-pane {
+                border-right: none;
+                border-bottom: 2px solid #e0e0e0;
+            }
+
+            textarea, #preview {
+                height: 400px;
+            }
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 MarkConvert</h1>
+            <p>Online Markdown Editor - Erstelle, Konvertiere, Exportiere</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="file-input-wrapper">
+                <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                    📂 Datei hochladen (DOCX)
+                </button>
+                <input type="file" id="fileInput" accept=".docx,.txt,.md">
+            </div>
+
+            <button class="btn btn-primary" onclick="exportMarkdown()">
+                💾 Als Markdown (.md)
+            </button>
+
+            <button class="btn btn-primary" onclick="exportDOCX()">
+                📄 Als Word (.docx)
+            </button>
+
+            <button class="btn btn-primary" onclick="exportRTF()">
+                📝 Als RTF (.rtf)
+            </button>
+
+            <button class="btn btn-primary" onclick="exportPDF()">
+                📑 Als PDF
+            </button>
+
+            <button class="btn btn-secondary" onclick="clearEditor()">
+                🗑️ Leeren
+            </button>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <h3>Datei hier ablegen</h3>
+            <p>oder klicken Sie auf "Datei hochladen"</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                Unterstützte Formate: DOCX, TXT, MD
+            </p>
+        </div>
+
+        <div class="main-content">
+            <div class="editor-pane">
+                <div class="pane-title">
+                    ✏️ Markdown Editor
+                </div>
+                <textarea id="editor" placeholder="Geben Sie hier Ihren Markdown-Text ein...
+
+Beispiel:
+# Überschrift 1
+## Überschrift 2
+
+**Fetter Text** und *kursiver Text*
+
+- Listenelement 1
+- Listenelement 2
+
+[Link](https://example.com)
+
+```javascript
+// Code-Block
+console.log('Hello World');
+```
+"></textarea>
+            </div>
+
+            <div class="preview-pane">
+                <div class="pane-title">
+                    👁️ Live-Vorschau
+                </div>
+                <div id="preview"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>MarkConvert - Online Markdown Editor | Lokal speichern und offline nutzen</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize marked.js with options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false
+        });
+
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Update preview on input
+        editor.addEventListener('input', updatePreview);
+
+        function updatePreview() {
+            const markdown = editor.value;
+            preview.innerHTML = marked.parse(markdown);
+        }
+
+        // File upload handler
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            processFile(file);
+        }
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                processFile(file);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        function processFile(file) {
+            const fileName = file.name.toLowerCase();
+
+            if (fileName.endsWith('.docx')) {
+                showStatus('DOCX-Datei wird verarbeitet...', 'info');
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const arrayBuffer = e.target.result;
+
+                    mammoth.convertToHtml({arrayBuffer: arrayBuffer})
+                        .then(result => {
+                            // Convert HTML to Markdown (simplified)
+                            const markdown = htmlToMarkdown(result.value);
+                            editor.value = markdown;
+                            updatePreview();
+                            showStatus('DOCX erfolgreich konvertiert!', 'success');
+                        })
+                        .catch(err => {
+                            showStatus('Fehler beim Konvertieren der DOCX: ' + err.message, 'error');
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            } else if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+                showStatus('Text-Datei wird geladen...', 'info');
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    editor.value = e.target.result;
+                    updatePreview();
+                    showStatus('Datei erfolgreich geladen!', 'success');
+                };
+                reader.readAsText(file);
+            } else {
+                showStatus('Nicht unterstütztes Dateiformat. Bitte verwenden Sie DOCX, TXT oder MD.', 'error');
+            }
+        }
+
+        function htmlToMarkdown(html) {
+            // Simple HTML to Markdown conversion
+            let markdown = html;
+
+            // Headers
+            markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
+            markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
+            markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
+            markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n');
+            markdown = markdown.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '\n##### $1\n');
+            markdown = markdown.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '\n###### $1\n');
+
+            // Bold
+            markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+            markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+
+            // Italic
+            markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+            markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+
+            // Links
+            markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+
+            // Lists
+            markdown = markdown.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+            markdown = markdown.replace(/<ul[^>]*>/gi, '\n');
+            markdown = markdown.replace(/<\/ul>/gi, '\n');
+            markdown = markdown.replace(/<ol[^>]*>/gi, '\n');
+            markdown = markdown.replace(/<\/ol>/gi, '\n');
+
+            // Paragraphs
+            markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n');
+
+            // Line breaks
+            markdown = markdown.replace(/<br\s*\/?>/gi, '\n');
+
+            // Remove remaining HTML tags
+            markdown = markdown.replace(/<[^>]*>/g, '');
+
+            // Decode HTML entities
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = markdown;
+            markdown = textarea.value;
+
+            // Clean up extra newlines
+            markdown = markdown.replace(/\n\n\n+/g, '\n\n');
+            markdown = markdown.trim();
+
+            return markdown;
+        }
+
+        // Export functions
+        function exportMarkdown() {
+            const markdown = editor.value;
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            downloadFile(blob, 'dokument.md');
+            showStatus('Markdown-Datei wurde heruntergeladen!', 'success');
+        }
+
+        async function exportDOCX() {
+            try {
+                showStatus('DOCX wird erstellt...', 'info');
+
+                // Check if docx library is loaded
+                if (typeof window.docx === 'undefined') {
+                    showStatus('DOCX-Bibliothek wird geladen...', 'info');
+                    // Fallback: create a simple HTML-based DOCX
+                    exportDOCXFallback();
+                    return;
+                }
+
+                const markdown = editor.value;
+                const lines = markdown.split('\n');
+                const children = [];
+
+                for (const line of lines) {
+                    if (line.startsWith('# ')) {
+                        children.push(
+                            new window.docx.Paragraph({
+                                text: line.substring(2),
+                                heading: window.docx.HeadingLevel.HEADING_1,
+                            })
+                        );
+                    } else if (line.startsWith('## ')) {
+                        children.push(
+                            new window.docx.Paragraph({
+                                text: line.substring(3),
+                                heading: window.docx.HeadingLevel.HEADING_2,
+                            })
+                        );
+                    } else if (line.startsWith('### ')) {
+                        children.push(
+                            new window.docx.Paragraph({
+                                text: line.substring(4),
+                                heading: window.docx.HeadingLevel.HEADING_3,
+                            })
+                        );
+                    } else if (line.trim() === '') {
+                        children.push(new window.docx.Paragraph({ text: '' }));
+                    } else {
+                        // Parse inline formatting
+                        const textRuns = parseInlineFormatting(line);
+                        children.push(new window.docx.Paragraph({ children: textRuns }));
+                    }
+                }
+
+                const doc = new window.docx.Document({
+                    sections: [{
+                        properties: {},
+                        children: children,
+                    }],
+                });
+
+                const blob = await window.docx.Packer.toBlob(doc);
+                downloadFile(blob, 'dokument.docx');
+                showStatus('DOCX-Datei wurde heruntergeladen!', 'success');
+            } catch (error) {
+                console.error('DOCX Export Error:', error);
+                showStatus('Verwende alternative DOCX-Methode...', 'info');
+                exportDOCXFallback();
+            }
+        }
+
+        function exportDOCXFallback() {
+            // Fallback: Create HTML-based DOCX
+            const markdown = editor.value;
+            const html = marked.parse(markdown);
+
+            const docxContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office'
+                      xmlns:w='urn:schemas-microsoft-com:office:word'
+                      xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>Export</title></head>
+                <body>${html}</body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', docxContent], {
+                type: 'application/msword'
+            });
+
+            downloadFile(blob, 'dokument.doc');
+            showStatus('Word-Dokument wurde heruntergeladen!', 'success');
+        }
+
+        function parseInlineFormatting(text) {
+            const textRuns = [];
+
+            // Remove markdown syntax and create text runs
+            // This is a simplified version
+            const cleanText = text
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/\*([^*]+)\*/g, '$1')
+                .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+                .replace(/`([^`]+)`/g, '$1');
+
+            textRuns.push(new window.docx.TextRun(cleanText));
+
+            return textRuns;
+        }
+
+        function exportRTF() {
+            showStatus('RTF wird erstellt...', 'info');
+
+            const markdown = editor.value;
+            const html = marked.parse(markdown);
+
+            // Convert HTML to RTF (simplified)
+            let rtf = '{\\rtf1\\ansi\\deff0\n';
+            rtf += '{\\fonttbl{\\f0\\fswiss\\fcharset0 Arial;}}\n';
+
+            // Strip HTML tags and convert to plain text for RTF
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
+            // Add content
+            const lines = plainText.split('\n');
+            for (const line of lines) {
+                if (line.trim()) {
+                    rtf += line + '\\par\n';
+                }
+            }
+
+            rtf += '}';
+
+            const blob = new Blob([rtf], { type: 'application/rtf' });
+            downloadFile(blob, 'dokument.rtf');
+            showStatus('RTF-Datei wurde heruntergeladen!', 'success');
+        }
+
+        async function exportPDF() {
+            showStatus('PDF wird erstellt...', 'info');
+
+            try {
+                // Clone the preview element for PDF generation
+                const previewClone = preview.cloneNode(true);
+
+                // Create a temporary container for styling
+                const tempContainer = document.createElement('div');
+                tempContainer.style.cssText = `
+                    position: absolute;
+                    left: -9999px;
+                    top: 0;
+                    width: 210mm;
+                    padding: 20mm;
+                    background: white;
+                    font-family: Arial, sans-serif;
+                    color: #333;
+                    line-height: 1.6;
+                `;
+                tempContainer.appendChild(previewClone);
+                document.body.appendChild(tempContainer);
+
+                // Configure html2pdf options
+                const options = {
+                    margin: 10,
+                    filename: 'dokument.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        letterRendering: true
+                    },
+                    jsPDF: {
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait'
+                    }
+                };
+
+                // Generate PDF using html2pdf
+                await html2pdf()
+                    .set(options)
+                    .from(previewClone)
+                    .save();
+
+                // Clean up
+                document.body.removeChild(tempContainer);
+
+                showStatus('PDF-Datei wurde heruntergeladen!', 'success');
+            } catch (error) {
+                console.error('PDF Export Error:', error);
+                showStatus('Fehler beim Erstellen der PDF: ' + error.message, 'error');
+            }
+        }
+
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function clearEditor() {
+            if (confirm('Möchten Sie den Editor wirklich leeren?')) {
+                editor.value = '';
+                updatePreview();
+                showStatus('Editor wurde geleert.', 'info');
+            }
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message ' + type;
+            statusMessage.style.display = 'block';
+
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initial preview update
+        updatePreview();
+    </script>
+</body>
+</html>

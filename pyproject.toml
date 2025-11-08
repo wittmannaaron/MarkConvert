@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "markconvert"
+version = "1.0.0"
+description = "Online Markdown Editor - Konvertiere Dokumente in Markdown und umgekehrt"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "MarkConvert Contributors"}
+]
+dependencies = [
+    "flask>=3.0.0",
+    "docling>=1.0.0",
+    "python-docx>=1.1.0",
+    "weasyprint>=60.0",
+    "markdown>=3.5",
+]
+
+[project.scripts]
+markconvert = "markconvert.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/wittmannaaron/MarkConvert-"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/markconvert"]
+
+[tool.hatch.build]
+include = [
+    "src/markconvert/**/*.py",
+    "src/markconvert/templates/**/*.html",
+    "src/markconvert/static/**/*"
+]

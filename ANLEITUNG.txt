@@ -1,0 +1,152 @@
+╔══════════════════════════════════════════════════════════════╗
+║                    MarkConvert - Anleitung                   ║
+║         Online Markdown Editor (Python Edition)              ║
+╚══════════════════════════════════════════════════════════════╝
+
+🚀 SCHNELLSTART
+===============
+
+SCHRITT 1: uv installieren (einmalig)
+--------------------------------------
+
+Windows:
+  1. Öffnen Sie PowerShell (Rechtsklick auf Start → PowerShell)
+  2. Führen Sie aus:
+     powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+macOS/Linux:
+  1. Öffnen Sie das Terminal
+  2. Führen Sie aus:
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+
+
+SCHRITT 2: MarkConvert starten
+-------------------------------
+
+1. Öffnen Sie Terminal (macOS/Linux) oder PowerShell (Windows)
+2. Führen Sie aus:
+   uvx markconvert
+
+3. Der Editor öffnet sich automatisch in Ihrem Browser!
+   URL: http://127.0.0.1:5000
+
+4. Zum Beenden: Drücken Sie Strg+C im Terminal
+
+
+✨ FUNKTIONEN
+=============
+
+📝 Markdown schreiben
+   • Geben Sie Ihren Text im linken Bereich ein
+   • Die Vorschau erscheint automatisch rechts
+   • Unterstützt alle gängigen Markdown-Befehle
+
+📂 Dateien importieren
+   • Klicken Sie auf "Datei hochladen"
+   • Oder ziehen Sie Dateien in den Upload-Bereich
+   • Unterstützte Formate:
+     - PDF-Dateien (neu!)
+     - Word-Dokumente (DOCX, DOC)
+     - PowerPoint-Präsentationen (PPTX)
+     - HTML-Dateien
+     - Text-Dateien (TXT, MD)
+
+💾 Dokumente exportieren
+   • Als Markdown (.md) - Reiner Text
+   • Als Word (.docx) - Für Microsoft Word
+   • Als RTF (.rtf) - Kompatibel mit vielen Programmen
+   • Als PDF - Perfekt formatiert mit Emoji-Unterstützung
+
+   ✓ Alle Formate unterstützen Umlaute und Emojis!
+
+
+📖 MARKDOWN-BEISPIELE
+=====================
+
+Überschriften:
+# Große Überschrift
+## Mittlere Überschrift
+### Kleine Überschrift
+
+Formatierung:
+**Fetter Text**
+*Kursiver Text*
+
+Listen:
+- Punkt 1
+- Punkt 2
+
+Nummerierte Listen:
+1. Erster Punkt
+2. Zweiter Punkt
+
+Links:
+[Link-Text](https://example.com)
+
+Code:
+`inline Code` oder
+
+```python
+# Mehrzeiliger Code-Block
+def beispiel():
+    print("Hallo Welt")
+```
+
+Emojis:
+## 🎯 Überschrift mit Emoji
+Emojis funktionieren in allen Formaten!
+
+
+🔒 DATENSCHUTZ
+==============
+
+✓ Alle Daten bleiben auf Ihrem Computer
+✓ Läuft lokal - keine Cloud-Verbindung
+✓ Keine Datenübertragung an externe Server
+✓ Open Source - Code ist öffentlich einsehbar
+
+
+💡 TIPPS
+========
+
+• Drag & Drop: Ziehen Sie Dateien direkt auf die Upload-Fläche
+• PDF-Import: Konvertieren Sie PDFs zu bearbeitbarem Markdown
+• Batch-Verarbeitung: Mehrere Dokumente nacheinander konvertieren
+• Unicode-Support: Alle Sprachen und Emojis werden korrekt exportiert
+
+
+❓ PROBLEME?
+============
+
+"uvx: command not found"
+→ uv ist nicht installiert. Folgen Sie SCHRITT 1 oben.
+
+"Port 5000 already in use"
+→ Schließen Sie andere Programme, die Port 5000 nutzen
+→ Oder beenden Sie eine alte MarkConvert-Instanz (Strg+C im Terminal)
+
+Browser öffnet sich nicht automatisch
+→ Öffnen Sie manuell: http://127.0.0.1:5000
+
+Import funktioniert nicht
+→ Überprüfen Sie, ob die Datei nicht beschädigt ist
+→ Bei PDFs: Stellen Sie sicher, dass sie nicht verschlüsselt sind
+
+Export-Fehler
+→ Überprüfen Sie, ob genug Speicherplatz vorhanden ist
+→ Bei großen Dokumenten: Warten Sie etwas länger
+
+
+🔄 AKTUALISIEREN
+================
+
+MarkConvert aktualisiert sich automatisch beim Start mit uvx!
+
+
+═══════════════════════════════════════════════════════════════
+
+Viel Erfolg mit MarkConvert!
+
+Für weitere Hilfe: https://github.com/wittmannaaron/MarkConvert-
+
+═══════════════════════════════════════════════════════════════
