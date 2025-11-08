@@ -155,6 +155,11 @@ class MarkdownConverter:
                     page_markdowns.append(f"\n\n---\n\n## Page {i}\n\n")
                 page_markdowns.append(page_md)
 
+                # Sleep between pages to give GPU time to recover (except after last page)
+                if i < page_count:
+                    logger.info("Waiting 10 seconds before next page...")
+                    time.sleep(10)
+
             total_time = time.time() - start_time
             logger.info(f"Total processing time: {total_time:.2f}s ({total_time/page_count:.2f}s/page)")
 
@@ -485,8 +490,8 @@ class MarkdownConverter:
 # Use environment variables for configuration
 # Default to remote Ollama server for better performance
 ollama_url = os.getenv('OLLAMA_URL', 'http://sonne.lan:8000')
-ollama_model = os.getenv('OLLAMA_MODEL', 'gemma3:27b')
-ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'gemma3:27b')
+ollama_model = os.getenv('OLLAMA_MODEL', 'gemma3:12b')
+ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'gemma3:12b')
 
 converter = MarkdownConverter(
     ollama_url=ollama_url,
