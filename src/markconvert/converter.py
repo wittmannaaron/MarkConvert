@@ -1,11 +1,16 @@
 """Document conversion functions using docling and other libraries."""
 
 import io
+import platform
 import tempfile
 from pathlib import Path
-from typing import Union, BinaryIO
+from typing import Union, BinaryIO, Optional
 
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import VlmPipelineOptions
+from docling.pipeline.vlm_pipeline import VlmPipeline
+from docling.datamodel import vlm_model_specs
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -13,12 +18,67 @@ import markdown
 from weasyprint import HTML, CSS
 
 
+def _detect_vlm_backend():
+    """
+    Automatically detect the best VLM backend based on the operating system.
+
+    Returns:
+        The appropriate vlm_model_specs for the current platform:
+        - SMOLDOCLING_MLX for macOS (Apple Silicon optimized)
+        - SMOLDOCLING_TRANSFORMERS for Linux/Windows
+    """
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        return vlm_model_specs.SMOLDOCLING_MLX
+    else:  # Linux, Windows, or other
+        return vlm_model_specs.SMOLDOCLING_TRANSFORMERS
+
+
 class MarkdownConverter:
     """Handle conversion between Markdown and other document formats."""
 
-    def __init__(self):
-        """Initialize the converter with docling."""
-        self.doc_converter = DocumentConverter()
+    def __init__(self, use_vlm: bool = False, vlm_backend: Optional[str] = None):
+        """
+        Initialize the converter with docling.
+
+        Args:
+            use_vlm: If True, use Vision Language Model (VLM) pipeline for enhanced
+                    document processing. Default is False (uses standard pipeline).
+            vlm_backend: Optional manual override for VLM backend:
+                        - 'mlx': Use MLX backend (Apple Silicon optimized)
+                        - 'transformers': Use Transformers backend (universal)
+                        - None: Auto-detect based on operating system (default)
+        """
+        self.use_vlm = use_vlm
+
+        if use_vlm:
+            # Determine which VLM backend to use
+            if vlm_backend == 'mlx':
+                vlm_options = vlm_model_specs.SMOLDOCLING_MLX
+            elif vlm_backend == 'transformers':
+                vlm_options = vlm_model_specs.SMOLDOCLING_TRANSFORMERS
+            else:
+                # Auto-detect based on platform
+                vlm_options = _detect_vlm_backend()
+
+            # Configure VLM pipeline options
+            pipeline_options = VlmPipelineOptions(
+                vlm_options=vlm_options,
+            )
+
+            # Initialize DocumentConverter with VLM pipeline
+            self.doc_converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_cls=VlmPipeline,
+                        pipeline_options=pipeline_options,
+                    ),
+                }
+            )
+        else:
+            # Use standard pipeline (default behavior)
+            self.doc_converter = DocumentConverter()
 
     def import_document(self, file_path: str) -> str:
         """
@@ -351,4 +411,9 @@ class MarkdownConverter:
 
 
 # Global converter instance
-converter = MarkdownConverter()
+# Use VLM if environment variable is set
+import os
+use_vlm = os.getenv('MARKCONVERT_USE_VLM', 'false').lower() in ('true', '1', 'yes')
+vlm_backend = os.getenv('MARKCONVERT_VLM_BACKEND', None)
+
+converter = MarkdownConverter(use_vlm=use_vlm, vlm_backend=vlm_backend)
