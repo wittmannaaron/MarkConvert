@@ -1,4 +1,4 @@
-"""Document conversion using Ollama LLM for PDFs/images and Docling for office formats."""
+"""Document conversion using OpenAI GPT-5 for PDFs/images and Docling for office formats."""
 
 import io
 import os
@@ -12,8 +12,7 @@ from docx.shared import Pt
 import markdown
 from weasyprint import HTML
 
-from markconvert.ollama_client import OllamaClient
-from markconvert.pdf_to_image import PdfToImageConverter, get_pdf_page_count
+from markconvert.openai_vision_client import OpenAIVisionClient
 
 
 class MarkdownConverter:
@@ -30,35 +29,24 @@ class MarkdownConverter:
 
     def __init__(
         self,
-        ollama_url: str = "http://localhost:11434",
-        ollama_model: str = "gemma3:27b",
-        ollama_vision_model: str = "qwen2.5vl:32b"
+        openai_api_key: str = None,
+        openai_model: str = "gpt-5-nano"
     ):
         """
         Initialize the converter.
 
         Args:
-            ollama_url: Ollama server URL
-            ollama_model: Default text model
-            ollama_vision_model: Vision model for image/PDF processing
+            openai_api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
+            openai_model: GPT-5 model ("gpt-5-nano" or "gpt-5-mini")
         """
-        # Initialize Ollama client for PDF/image processing
-        self.ollama_client = OllamaClient(
-            base_url=ollama_url,
-            model=ollama_model,
-            vision_model=ollama_vision_model
+        # Initialize OpenAI client for PDF/image processing
+        self.vision_client = OpenAIVisionClient(
+            api_key=openai_api_key,
+            model=openai_model
         )
 
         # Initialize Docling for office document processing
         self.doc_converter = DocumentConverter()
-
-        # Initialize PDF-to-image converter with optimized settings
-        self.pdf_converter = PdfToImageConverter(
-            dpi=150,  # Lower DPI = faster processing
-            output_format="jpeg",  # JPEG uses fewer tokens than PNG
-            jpeg_quality=85,  # Good quality, smaller file
-            max_dimension=2048  # Limit image size for faster processing
-        )
 
     def import_document(self, file_path: str) -> str:
         """
@@ -101,75 +89,24 @@ class MarkdownConverter:
             raise ValueError(f"Fehler beim Importieren der Datei: {str(e)}")
 
     def _import_via_llm(self, file_path: Path) -> str:
-        """Import PDF or image via Ollama Vision LLM."""
+        """Import PDF or image via OpenAI GPT-5."""
+        import logging
+        import time
+
+        logger = logging.getLogger(__name__)
         suffix = file_path.suffix.lower()
 
         if suffix == '.pdf':
-            # PDF: Convert to images, process each page
-            return self._process_pdf_via_llm(file_path)
+            # PDF: Send entire PDF to OpenAI for processing (fast!)
+            start_time = time.time()
+            logger.info(f"Processing PDF with OpenAI GPT-5...")
+            result = self.vision_client.process_pdf(file_path)
+            processing_time = time.time() - start_time
+            logger.info(f"PDF processed in {processing_time:.2f}s")
+            return result
         else:
             # Image: Process directly
-            return self.ollama_client.process_image_to_markdown(file_path)
-
-    def _process_pdf_via_llm(self, pdf_path: Path) -> str:
-        """Process PDF by converting pages to images and analyzing with LLM."""
-        import time
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        # Get page count
-        page_count = get_pdf_page_count(pdf_path)
-        logger.info(f"Starting PDF processing: {page_count} pages")
-
-        # Create temp directory for images
-        temp_dir = Path(tempfile.mkdtemp(prefix="pdf_pages_"))
-
-        try:
-            # Convert all pages to images
-            start_time = time.time()
-            logger.info("Converting PDF to images...")
-            image_paths = self.pdf_converter.convert_pdf_to_images(pdf_path, temp_dir)
-            conversion_time = time.time() - start_time
-            logger.info(f"PDF converted to images in {conversion_time:.2f}s")
-
-            # Log image sizes for debugging
-            total_size = sum(p.stat().st_size for p in image_paths)
-            logger.info(f"Total image size: {total_size / 1024 / 1024:.2f} MB ({total_size / len(image_paths) / 1024:.2f} KB/page)")
-
-            # Process each page
-            page_markdowns = []
-            for i, image_path in enumerate(image_paths, start=1):
-                page_start = time.time()
-                logger.info(f"Processing page {i}/{page_count}...")
-                print(f"Processing page {i}/{page_count}...")
-
-                # Process image to markdown
-                page_md = self.ollama_client.process_image_to_markdown(image_path)
-
-                page_time = time.time() - page_start
-                logger.info(f"Page {i} processed in {page_time:.2f}s")
-
-                # Add page separator
-                if i > 1:
-                    page_markdowns.append(f"\n\n---\n\n## Page {i}\n\n")
-                page_markdowns.append(page_md)
-
-                # Sleep between pages to give GPU time to recover (except after last page)
-                if i < page_count:
-                    logger.info("Waiting 10 seconds before next page...")
-                    time.sleep(10)
-
-            total_time = time.time() - start_time
-            logger.info(f"Total processing time: {total_time:.2f}s ({total_time/page_count:.2f}s/page)")
-
-            # Combine all pages
-            return "".join(page_markdowns)
-
-        finally:
-            # Clean up temp images
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
+            return self.vision_client.process_image_to_markdown(file_path)
 
     def _import_via_docling(self, file_path: Path) -> str:
         """Import office document via Docling."""
@@ -488,13 +425,10 @@ class MarkdownConverter:
 
 # Global converter instance
 # Use environment variables for configuration
-# Default to remote Ollama server for better performance
-ollama_url = os.getenv('OLLAMA_URL', 'http://sonne.lan:8000')
-ollama_model = os.getenv('OLLAMA_MODEL', 'gemma3:12b')
-ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'gemma3:12b')
+# OpenAI API key from OPENAI_API_KEY env var
+openai_model = os.getenv('OPENAI_MODEL', 'gpt-5-nano')
 
 converter = MarkdownConverter(
-    ollama_url=ollama_url,
-    ollama_model=ollama_model,
-    ollama_vision_model=ollama_vision_model
+    openai_api_key=None,  # Uses OPENAI_API_KEY env var
+    openai_model=openai_model
 )
