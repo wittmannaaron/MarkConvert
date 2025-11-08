@@ -234,6 +234,49 @@ Provide a clear, structured description in Markdown format."""
             temperature=0.3  # Slightly higher for creative descriptions
         )
 
+    def _remove_markdown_code_blocks(self, text: str) -> str:
+        """
+        Remove markdown code block wrappers if present.
+        LLMs often wrap their output in ```markdown ... ``` blocks.
+        This function aggressively removes all code block markers.
+
+        Args:
+            text: Text potentially wrapped in code blocks
+
+        Returns:
+            Cleaned text without code block wrappers
+        """
+        import re
+
+        text = text.strip()
+
+        # Remove code block wrappers at start and end
+        if text.startswith('```markdown'):
+            text = text[len('```markdown'):].lstrip('\n')
+        elif text.startswith('```'):
+            first_newline = text.find('\n')
+            if first_newline != -1:
+                text = text[first_newline + 1:].lstrip('\n')
+
+        if text.endswith('```'):
+            text = text[:-3].rstrip('\n')
+
+        # Remove all standalone ``` lines (code block markers)
+        # This handles cases where LLM adds ``` in the middle
+        lines = text.split('\n')
+        cleaned_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+            # Skip lines that are just code block markers
+            if stripped == '```' or stripped == '```markdown':
+                continue
+            cleaned_lines.append(line)
+
+        text = '\n'.join(cleaned_lines)
+
+        return text.strip()
+
     def process_image_to_markdown(self, image_path: Union[str, Path]) -> str:
         """
         Process image to Markdown using two-step approach:
@@ -244,15 +287,18 @@ Provide a clear, structured description in Markdown format."""
             image_path: Path to image
 
         Returns:
-            Markdown output
+            Markdown output (cleaned of code block wrappers)
         """
         # Step 1: Classify
         content_type = self.classify_image_content(image_path)
 
         # Step 2: Process based on classification
         if content_type == "document":
-            return self.transcribe_document(image_path)
+            result = self.transcribe_document(image_path)
         else:
             # Wrap description in Markdown format
             description = self.describe_image(image_path)
-            return f"# Image Description\n\n{description}"
+            result = f"# Image Description\n\n{description}"
+
+        # Step 3: Clean up code block wrappers
+        return self._remove_markdown_code_blocks(result)
