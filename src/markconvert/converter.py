@@ -1,88 +1,73 @@
-"""Document conversion functions using docling and other libraries."""
+"""Document conversion using Ollama LLM for PDFs/images and Docling for office formats."""
 
 import io
-import platform
+import os
 import tempfile
 from pathlib import Path
 from typing import Union, BinaryIO, Optional
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import VlmPipelineOptions
-from docling.pipeline.vlm_pipeline import VlmPipeline
-from docling.datamodel import vlm_model_specs
+from docling.document_converter import DocumentConverter
 from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import Pt
 import markdown
-from weasyprint import HTML, CSS
+from weasyprint import HTML
 
-
-def _detect_vlm_backend():
-    """
-    Automatically detect the best VLM backend based on the operating system.
-
-    Returns:
-        The appropriate vlm_model_specs for the current platform:
-        - SMOLDOCLING_MLX for macOS (Apple Silicon optimized)
-        - SMOLDOCLING_TRANSFORMERS for Linux/Windows
-    """
-    system = platform.system()
-
-    if system == "Darwin":  # macOS
-        return vlm_model_specs.SMOLDOCLING_MLX
-    else:  # Linux, Windows, or other
-        return vlm_model_specs.SMOLDOCLING_TRANSFORMERS
+from markconvert.ollama_client import OllamaClient
+from markconvert.pdf_to_image import PdfToImageConverter, get_pdf_page_count
 
 
 class MarkdownConverter:
     """Handle conversion between Markdown and other document formats."""
 
-    def __init__(self, use_vlm: bool = False, vlm_backend: Optional[str] = None):
+    # File extensions that are processed via LLM (vision)
+    LLM_FORMATS = {'.pdf', '.png', '.jpg', '.jpeg'}
+
+    # File extensions that are processed via Docling
+    DOCLING_FORMATS = {'.docx', '.doc', '.pptx', '.ppt', '.html', '.htm'}
+
+    # Text formats that don't need processing
+    TEXT_FORMATS = {'.txt', '.md'}
+
+    def __init__(
+        self,
+        ollama_url: str = "http://localhost:11434",
+        ollama_model: str = "gemma3:27b",
+        ollama_vision_model: str = "qwen2.5vl:32b"
+    ):
         """
-        Initialize the converter with docling.
+        Initialize the converter.
 
         Args:
-            use_vlm: If True, use Vision Language Model (VLM) pipeline for enhanced
-                    document processing. Default is False (uses standard pipeline).
-            vlm_backend: Optional manual override for VLM backend:
-                        - 'mlx': Use MLX backend (Apple Silicon optimized)
-                        - 'transformers': Use Transformers backend (universal)
-                        - None: Auto-detect based on operating system (default)
+            ollama_url: Ollama server URL
+            ollama_model: Default text model
+            ollama_vision_model: Vision model for image/PDF processing
         """
-        self.use_vlm = use_vlm
+        # Initialize Ollama client for PDF/image processing
+        self.ollama_client = OllamaClient(
+            base_url=ollama_url,
+            model=ollama_model,
+            vision_model=ollama_vision_model
+        )
 
-        if use_vlm:
-            # Determine which VLM backend to use
-            if vlm_backend == 'mlx':
-                vlm_options = vlm_model_specs.SMOLDOCLING_MLX
-            elif vlm_backend == 'transformers':
-                vlm_options = vlm_model_specs.SMOLDOCLING_TRANSFORMERS
-            else:
-                # Auto-detect based on platform
-                vlm_options = _detect_vlm_backend()
+        # Initialize Docling for office document processing
+        self.doc_converter = DocumentConverter()
 
-            # Configure VLM pipeline options
-            pipeline_options = VlmPipelineOptions(
-                vlm_options=vlm_options,
-            )
-
-            # Initialize DocumentConverter with VLM pipeline
-            self.doc_converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(
-                        pipeline_cls=VlmPipeline,
-                        pipeline_options=pipeline_options,
-                    ),
-                }
-            )
-        else:
-            # Use standard pipeline (default behavior)
-            self.doc_converter = DocumentConverter()
+        # Initialize PDF-to-image converter with optimized settings
+        self.pdf_converter = PdfToImageConverter(
+            dpi=150,  # Lower DPI = faster processing
+            output_format="jpeg",  # JPEG uses fewer tokens than PNG
+            jpeg_quality=85,  # Good quality, smaller file
+            max_dimension=2048  # Limit image size for faster processing
+        )
 
     def import_document(self, file_path: str) -> str:
         """
-        Import a document (PDF, DOCX, etc.) and convert to Markdown.
+        Import a document and convert to Markdown.
+
+        Routing logic:
+        - PDF/PNG/JPG → Ollama Vision LLM
+        - DOCX/PPTX/HTML → Docling
+        - TXT/MD → Direct read
 
         Args:
             file_path: Path to the document file
@@ -90,16 +75,101 @@ class MarkdownConverter:
         Returns:
             Markdown text
         """
+        file_path = Path(file_path)
+        suffix = file_path.suffix.lower()
+
         try:
-            # Use docling to convert document to markdown
-            result = self.doc_converter.convert(file_path)
+            # Route 1: PDF and images → Ollama Vision
+            if suffix in self.LLM_FORMATS:
+                return self._import_via_llm(file_path)
 
-            # Export as markdown
-            markdown_text = result.document.export_to_markdown()
+            # Route 2: Office formats → Docling
+            elif suffix in self.DOCLING_FORMATS:
+                return self._import_via_docling(file_path)
 
-            return markdown_text
+            # Route 3: Plain text formats → Direct read
+            elif suffix in self.TEXT_FORMATS:
+                return file_path.read_text(encoding='utf-8')
+
+            else:
+                raise ValueError(
+                    f"Unsupported file format: {suffix}. "
+                    f"Supported: {', '.join(sorted(self.LLM_FORMATS | self.DOCLING_FORMATS | self.TEXT_FORMATS))}"
+                )
+
         except Exception as e:
             raise ValueError(f"Fehler beim Importieren der Datei: {str(e)}")
+
+    def _import_via_llm(self, file_path: Path) -> str:
+        """Import PDF or image via Ollama Vision LLM."""
+        suffix = file_path.suffix.lower()
+
+        if suffix == '.pdf':
+            # PDF: Convert to images, process each page
+            return self._process_pdf_via_llm(file_path)
+        else:
+            # Image: Process directly
+            return self.ollama_client.process_image_to_markdown(file_path)
+
+    def _process_pdf_via_llm(self, pdf_path: Path) -> str:
+        """Process PDF by converting pages to images and analyzing with LLM."""
+        import time
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # Get page count
+        page_count = get_pdf_page_count(pdf_path)
+        logger.info(f"Starting PDF processing: {page_count} pages")
+
+        # Create temp directory for images
+        temp_dir = Path(tempfile.mkdtemp(prefix="pdf_pages_"))
+
+        try:
+            # Convert all pages to images
+            start_time = time.time()
+            logger.info("Converting PDF to images...")
+            image_paths = self.pdf_converter.convert_pdf_to_images(pdf_path, temp_dir)
+            conversion_time = time.time() - start_time
+            logger.info(f"PDF converted to images in {conversion_time:.2f}s")
+
+            # Log image sizes for debugging
+            total_size = sum(p.stat().st_size for p in image_paths)
+            logger.info(f"Total image size: {total_size / 1024 / 1024:.2f} MB ({total_size / len(image_paths) / 1024:.2f} KB/page)")
+
+            # Process each page
+            page_markdowns = []
+            for i, image_path in enumerate(image_paths, start=1):
+                page_start = time.time()
+                logger.info(f"Processing page {i}/{page_count}...")
+                print(f"Processing page {i}/{page_count}...")
+
+                # Process image to markdown
+                page_md = self.ollama_client.process_image_to_markdown(image_path)
+
+                page_time = time.time() - page_start
+                logger.info(f"Page {i} processed in {page_time:.2f}s")
+
+                # Add page separator
+                if i > 1:
+                    page_markdowns.append(f"\n\n---\n\n## Page {i}\n\n")
+                page_markdowns.append(page_md)
+
+            total_time = time.time() - start_time
+            logger.info(f"Total processing time: {total_time:.2f}s ({total_time/page_count:.2f}s/page)")
+
+            # Combine all pages
+            return "".join(page_markdowns)
+
+        finally:
+            # Clean up temp images
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def _import_via_docling(self, file_path: Path) -> str:
+        """Import office document via Docling."""
+        result = self.doc_converter.convert(str(file_path))
+        return result.document.export_to_markdown()
 
     def import_document_from_bytes(self, file_bytes: bytes, filename: str) -> str:
         """
@@ -113,7 +183,8 @@ class MarkdownConverter:
             Markdown text
         """
         # Save to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
+        suffix = Path(filename).suffix
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(file_bytes)
             tmp_path = tmp.name
 
@@ -411,9 +482,13 @@ class MarkdownConverter:
 
 
 # Global converter instance
-# Use VLM if environment variable is set
-import os
-use_vlm = os.getenv('MARKCONVERT_USE_VLM', 'false').lower() in ('true', '1', 'yes')
-vlm_backend = os.getenv('MARKCONVERT_VLM_BACKEND', None)
+# Use environment variables for configuration
+ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
+ollama_model = os.getenv('OLLAMA_MODEL', 'gemma3:27b')
+ollama_vision_model = os.getenv('OLLAMA_VISION_MODEL', 'qwen2.5vl:32b')
 
-converter = MarkdownConverter(use_vlm=use_vlm, vlm_backend=vlm_backend)
+converter = MarkdownConverter(
+    ollama_url=ollama_url,
+    ollama_model=ollama_model,
+    ollama_vision_model=ollama_vision_model
+)

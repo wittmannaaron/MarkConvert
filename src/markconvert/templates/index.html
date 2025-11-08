@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarkConvert - Online Markdown Editor</title>
+    <title>OCR mit LLM - Online Markdown Editor</title>
 
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
@@ -363,9 +363,9 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📝 MarkConvert</h1>
+            <h1>📝 OCR mit LLM</h1>
             <p>Online Markdown Editor - Erstelle, Konvertiere, Exportiere</p>
-            <div class="version">Python Edition mit Docling</div>
+            <div class="version">Powered by Ollama Vision Models</div>
         </div>
 
         <div class="toolbar">
@@ -504,7 +504,8 @@ console.log('Hello World');
         });
 
         async function processFile(file) {
-            showStatus('Datei wird verarbeitet...', 'info');
+            // Show persistent loading indicator with spinner
+            showStatus('<span class="loading"></span> Datei wird verarbeitet... Dies kann bei VLM-Modus bis zu 60 Sekunden dauern.', 'info', true);
             setButtonsEnabled(false);
 
             const formData = new FormData();
@@ -521,15 +522,17 @@ console.log('Hello World');
                 if (response.ok) {
                     editor.value = data.markdown;
                     updatePreview();
-                    showStatus(data.message || 'Datei erfolgreich importiert!', 'success');
+                    showStatus('✓ ' + (data.message || 'Datei erfolgreich importiert!'), 'success');
                 } else {
-                    showStatus(data.error || 'Fehler beim Importieren', 'error');
+                    showStatus('✗ ' + (data.error || 'Fehler beim Importieren'), 'error');
                 }
             } catch (error) {
                 console.error('Import error:', error);
-                showStatus('Fehler beim Importieren: ' + error.message, 'error');
+                showStatus('✗ Fehler beim Importieren: ' + error.message, 'error');
             } finally {
                 setButtonsEnabled(true);
+                // Reset file input to allow re-uploading the same file
+                fileInput.value = '';
             }
         }
 
@@ -561,7 +564,7 @@ console.log('Hello World');
         }
 
         async function exportDOCX() {
-            showStatus('DOCX wird erstellt...', 'info');
+            showStatus('<span class="loading"></span> DOCX wird erstellt...', 'info', true);
             setButtonsEnabled(false);
 
             const markdown = editor.value;
@@ -592,7 +595,7 @@ console.log('Hello World');
         }
 
         async function exportPDF() {
-            showStatus('PDF wird erstellt...', 'info');
+            showStatus('<span class="loading"></span> PDF wird erstellt...', 'info', true);
             setButtonsEnabled(false);
 
             const markdown = editor.value;
@@ -623,7 +626,7 @@ console.log('Hello World');
         }
 
         async function exportRTF() {
-            showStatus('RTF wird erstellt...', 'info');
+            showStatus('<span class="loading"></span> RTF wird erstellt...', 'info', true);
             setButtonsEnabled(false);
 
             const markdown = editor.value;
@@ -672,14 +675,22 @@ console.log('Hello World');
             }
         }
 
-        function showStatus(message, type) {
-            statusMessage.textContent = message;
+        function showStatus(message, type, persistent = false) {
+            statusMessage.innerHTML = message;
             statusMessage.className = 'status-message ' + type;
             statusMessage.style.display = 'block';
 
-            setTimeout(() => {
-                statusMessage.style.display = 'none';
-            }, 5000);
+            // Clear any existing timeout
+            if (window.statusTimeout) {
+                clearTimeout(window.statusTimeout);
+            }
+
+            // Auto-hide after 5 seconds unless persistent
+            if (!persistent) {
+                window.statusTimeout = setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            }
         }
 
         function setButtonsEnabled(enabled) {
